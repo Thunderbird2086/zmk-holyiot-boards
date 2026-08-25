@@ -1,0 +1,3 @@
+config BOARD_HOLYIOT_18010
+    bool "Holyiot 18010 Dongle"
+    depends on SOC_NRF52840_QIAA

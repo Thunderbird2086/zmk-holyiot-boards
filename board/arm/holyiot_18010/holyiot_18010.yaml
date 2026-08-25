@@ -1,0 +1,12 @@
+identifier: holyiot_18010
+name: Holyiot 18010 Dongle
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+ram: 256
+flash: 1024
+features:
+  - bluetooth
+  - usb
