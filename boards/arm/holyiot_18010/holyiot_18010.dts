@@ -20,6 +20,22 @@
     };
 };
 
+&gpio0 {
+    status = "okay";
+};
+
+&gpiote {
+    status = "okay";
+};
+
+&radio {
+    status = "okay";
+};
+
+zephyr_udc0: &usbd {
+    status = "okay";
+};
+
 &flash0 {
     partitions {
         compatible = "fixed-partitions";
