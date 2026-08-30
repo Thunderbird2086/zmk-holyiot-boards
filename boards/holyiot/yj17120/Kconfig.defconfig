@@ -1,0 +1,7 @@
+if BOARD_HOLYIOT_YJ17120
+
+config BOARD
+    default "holyiot_yj17120"
+
+endif
+
