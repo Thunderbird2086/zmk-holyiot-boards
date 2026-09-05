@@ -1,0 +1,6 @@
+board:
+  name: yj17120
+  full_name: Holyiot YJ-17120 USB Dongle
+  vendor: holyiot
+  socs:
+    - name: nrf52840

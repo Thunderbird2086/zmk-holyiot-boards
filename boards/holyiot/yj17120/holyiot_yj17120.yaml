@@ -1,0 +1,10 @@
+identifier: holyiot_yj17120
+name: "HolyIOT YJ-17120 USB Dongle"
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+supported:
+  - usb_device
+  - ble
+
