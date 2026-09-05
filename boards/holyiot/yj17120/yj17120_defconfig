@@ -27,6 +27,7 @@ CONFIG_SETTINGS_NVS=y
 
 # USB HID out to host
 CONFIG_ZMK_USB=y
+CONFIG_ZMK_KEYBOARD_NAME="YJ17120"
 
 # BLE dongle: central role receiving split peripherals
 CONFIG_ZMK_BLE=y
