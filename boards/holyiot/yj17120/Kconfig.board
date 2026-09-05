@@ -1,2 +1,0 @@
-config BOARD_HOLYIOT_YJ17120
-    bool "HolyIOT YJ-17120 USB Dongle"

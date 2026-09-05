@@ -1,0 +1,72 @@
+/dts-v1/;
+
+#include <nordic/nrf52840_qiaa.dtsi>
+
+/ {
+    model = "HolyIOT YJ-17120 USB Dongle (nRF52840)";
+    compatible = "holyiot,yj17120";
+
+    chosen {
+        zephyr,leds = &leds;
+        zephyr,code-partition = &code_partition;
+        zephyr,sram = &sram0;
+        zephyr,flash = &flash0;
+        zmk,kscan = &kscan;
+    };
+
+    /* Keyless central dongle: no physical matrix, provide a mock kscan node. */
+    kscan: mock_kscan {
+        compatible = "zmk,kscan-mock";
+
+        rows = <1>;
+        columns = <1>;
+        events = <>;
+    };
+
+    leds: leds {
+        compatible = "gpio-leds";
+
+        led1: led_1 {
+            gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+            label = "LED1";
+        };
+    };
+};
+
+zephyr_udc0: &usbd {
+    status = "okay";
+};
+
+&gpiote {
+    status = "okay";
+};
+
+&gpio0 { status = "okay"; };
+&gpio1 { status = "okay"; };
+&radio { status = "okay"; };
+
+&flash0 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        /* MBR:          0x00000000 - 0x00000FFF */
+        /* SoftDevice:   0x00001000 - 0x00026FFF */
+        sd_partition: partition@0 {
+            reg = <0x00000000 0x00027000>;
+        };
+
+        /* ZMK application: 0x00027000 - 0x000D2FFF */
+        code_partition: partition@27000 {
+            reg = <0x00027000 0x000AC000>;
+        };
+
+        /* ZMK settings (NVS/FCB): 0x000D3000 - 0x000DFFFF */
+        storage_partition: partition@D3000 {
+            reg = <0x000D3000 0x0000D000>;
+        };
+
+        /* OpenDFU bootloader: 0x000E0000 - 0x000FDFFF (protected) */
+    };
+};
