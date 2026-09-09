@@ -1,9 +1,19 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+/* ZMK variant of the base HWM board.
+ * The base `yj17120.dts` already declares the flash partition layout plus the
+ * `zephyr,code-partition` / `zephyr,flash` / `zephyr,sram` chosen nodes, so
+ * the variant re-declares them here exactly as the base would, and disables
+ * uart0 to keep flash usage minimal.
+ */
+
 /dts-v1/;
 
 #include <nordic/nrf52840_qiaa.dtsi>
 
 / {
-    model = "HolyIOT YJ-17120 USB Dongle (nRF52840)";
+    model = "HolyIOT YJ-17120 Interconnect (nRF52840)";
     compatible = "holyiot,yj17120";
 
     chosen {
@@ -11,25 +21,19 @@
         zephyr,code-partition = &code_partition;
         zephyr,sram = &sram0;
         zephyr,flash = &flash0;
-        zmk,kscan = &kscan;
-    };
-
-    /* Keyless central dongle: no physical matrix, provide a mock kscan node. */
-    kscan: mock_kscan {
-        compatible = "zmk,kscan-mock";
-
-        rows = <1>;
-        columns = <1>;
-        events = <>;
     };
 
     leds: leds {
         compatible = "gpio-leds";
 
-        led1: led_1 {
+        led_1: led_red {
             gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
-            label = "LED1";
+            label = "LED RED";
         };
+    };
+
+    aliases {
+        led1 = &led_1;
     };
 };
 

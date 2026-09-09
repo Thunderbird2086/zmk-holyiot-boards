@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config SHIELD_YJ17120_TESTER
+    def_bool $(shields_list_contains,yj17120_tester)

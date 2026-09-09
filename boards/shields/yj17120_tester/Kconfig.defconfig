@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_YJ17120_TESTER
+
+config ZMK_KEYBOARD_NAME
+    default "YJ17120 Tester"
+
+config ZMK_KSCAN_MATRIX_POLLING
+    default y
+
+config ZMK_SPLIT
+    default n
+
+endif

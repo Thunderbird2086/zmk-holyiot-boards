@@ -1,0 +1,8 @@
+file_format: "1"
+id: yj17120_tester
+name: "YJ-17120 Tester"
+type: shield
+url: https://github.com/zmk-holyiot-board  # placeholder
+requires: [yj17120]
+features:
+  - keys

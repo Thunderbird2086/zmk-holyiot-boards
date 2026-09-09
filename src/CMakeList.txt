@@ -1,0 +1,3 @@
+# zmk-holyiot-board/src/CMakeLists.txt
+
+target_sources(app PRIVATE power_led.c)

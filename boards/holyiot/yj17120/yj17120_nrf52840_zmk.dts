@@ -1,0 +1,13 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+/* ZMK variant of the base HWM board.
+ * Reuses `yj17120.dts` (flash partitions + chosen nodes) and
+ * disables uart0 to keep flash usage minimal.
+ */
+
+#include "yj17120.dts"
+
+&uart0 {
+    status = "disabled";
+};
