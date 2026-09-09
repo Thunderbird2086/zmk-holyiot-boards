@@ -1,207 +1,197 @@
 # ZMK Holyiot Boards
 
-ZMK board support for the **HolyIOT YJ-17120 USB Dongle** (nRF52840).
+ZMK board support for the **HolyIOT YJ-17120** (nRF52840), now provided as a
+**ZMK MCU interconnect board** (nice!nano / nice!nano style).
 
-The YJ-17120 is a **keyless BLE split-central dongle**: it has no keys of its own. It pairs with one or more BLE split-keyboard peripherals and forwards their keystrokes to the host over **USB HID**. It runs ZMK in `ZMK_SPLIT_ROLE_CENTRAL`.
+The YJ-17120 board itself carries **no keymap and no key matrix**: it is a bare
+nRF52840 interconnect with a USB device controller, the BLE radio, and a red
+power LED. The **kscan / keymap / split role** are all defined by a **shield**
+that is stacked on it. This mirrors how `nice_nano//zmk` is consumed together
+with a keyboard shield (kyria, corne, m60, ...).
+
+This module ships a **tester shield** (`yj17120_tester`) so that an
+out-of-the-box build target exists that produces a USB HID keyboard with a
+tiny placeholder matrix, and can be used to smoke-test that the board + USB +
+kscan paths all bind and link correctly.
 
 ## Quick start
 
-1. Set up the [zmk-workspace](https://github.com/Thunderbird2086/zmk-workspace) repository with Docker, the `devcontainer` CLI, a ZMK checkout in `zmk/`, and a ZMK config repository in `zmk-modules/`.
-2. Place this module at `zmk-modules/zmk-holyiot-board` and build from the `zmk-workspace` root:
+1. Set up the [zmk-workspace](https://github.com/Thunderbird2086/zmk-workspace) repository with Docker, the `devcontainer` CLI, and a ZMK checkout in `zmk/`.
+2. Place this module at `zmk-modules/zmk-holyiot-board`.
+3. Build from the `zmk-workspace` root using the tester-shield target:
 
-  ```bash
-  ./build-docker.sh -b yj17120 -d build/holyiot_yj17120 -c non-nemo-zmk-config -e zmk-holyiot-board
-  ```
+   ```bash
+   ./build-docker.sh -b yj17120//zmk -S yj17120_tester \
+       -d build/holyiot_yj17120_tester \
+       -c non-nemo-zmk-config \
+       -e zmk-holyiot-board
+   ```
 
-3. Flash `zmk/build/holyiot_yj17120/zephyr/zmk.hex` with the Programmer **Write** action. Do not use **Erase & Write** for a routine application update.
-4. Reset the dongle and verify that it enumerates as a USB HID keyboard.
+   `-S yj17120_tester` passes `-DSHIELD=yj17120_tester` to `west build`.
+   The `build-docker.sh` wrapper in this repo has been extended with that
+   `-S` option; the older `-b yj17120` (no variant) form will no longer build
+   with a valid keymap since the board no longer ships one.
+
+4. Flash `zmk/build/holyiot_yj17120_tester/zephyr/zmk.hex` with the Programmer **Write** action. Do not use **Erase & Write** for a routine application update.
+5. Reset the board and verify that it enumerates as a USB HID keyboard (`YJ17120 Tester`).
 
 The existing SoftDevice and OpenDFU bootloader are reused by this build. See [Full provisioning](#full-provisioning) only if the chip has been erased or the SoftDevice is missing.
 
-## Prerequisites
+## Choosing a shield
 
-- Docker and the [`devcontainer` CLI](https://github.com/devcontainers/cli).
-- The [zmk-workspace](https://github.com/Thunderbird2086/zmk-workspace) directory layout, including `zmk/` and `zmk-modules/`.
-- A ZMK config repository such as `non-nemo-zmk-config` under `zmk-modules/`.
-- This module under `zmk-modules/zmk-holyiot-board`.
+The board ships in the `zmk` variant only (`yj17120//zmk`). Any ZMK shield
+that can reference the `yj17120` interconnect id can be built on top of it.
+The tester shield is one such example:
 
-The `-e zmk-holyiot-board` argument tells `build-docker.sh` to load this module's board and `led.c` implementation.
+```
+zmk-modules/zmk-holyiot-board/boards/
+  holyiot/yj17120/            # HWM v2 board: name=yj17120, vendor=holyiot, nrf52840/zmk
+  shields/yj17120_tester/     # tester shield (placeholder 1x1 matrix on gpio0.4/gpio0.5)
+```
+
+Other shields (or a real YJ-17120 keyboard shield) can be added under
+`boards/shields/<name>/` of any ZMK extra module referenced via `-e`.
+Zephyr v4's `shields.cmake` resolves shields by `boards/shields/<shield>/Kconfig.shield`
++ `<shield>.overlay` across all `BOARD_ROOT` roots.
 
 ## Layout
 
 ```
 boards/holyiot/yj17120/
-  board.yml           HWM v2 board descriptor (name yj17120, vendor holyiot, nrf52840)
-  Kconfig.yj17120     selects SOC_NRF52840_QIAA + ZMK_BOARD_COMPAT
-  board.cmake         nrfjprog flash runner args
-  CMakeLists.txt      compiles led.c into the app
-  led.c               drives LED1 (P1.01) high at boot
-  yj17120.dts         devicetree (flash partitions, mock kscan, USB, LED)
-  yj17120.keymap      single no-op binding (keyless central)
-  yj17120_defconfig   ZMK_USB / ZMK_BLE / ZMK_SPLIT_ROLE_CENTRAL / code-partition / NVS
-  holyiot_yj17120.yaml HWM v1 fallback descriptor
-zephyr/module.yml     build.settings.board_root = .
+  board.yml                     HWM v2 board descriptor (board name yj17120, variant zmk)
+  Kconfig.yj17120               selects SOC_NRF52840_QIAA + ZMK_BOARD_COMPAT
+  board.cmake                   nrfjprog flash runner args
+  yj17120.dts                   base (HWM v1 fallback) devicetree — no kscan/chosen-zmk
+  yj17120_nrf52840_zmk.dts      ZMK variant devicetree (leds, usbd, radio, flash partitions, uart0 disabled)
+  yj17120_nrf52840_zmk_defconfig  ZMK_USB / ZMK_BLE / code-partition / NVS (no split role, no keymap)
+  holyiot_yj17120.yaml          HWM v1 fallback descriptor
+  board.cmake                   board_runner_args(nrfjprog "--nrf-family=NRF52")
+boards/shields/yj17120_tester/
+  Kconfig.shield                SHIELD_YJ17120_TESTER
+  Kconfig.defconfig             ZMK_KEYBOARD_NAME="YJ17120 Tester" / ZMK_KSCAN_MATRIX_POLLING
+  yj17120_tester.overlay        1x1 matrix on gpio0.4 (row) / gpio0.5 (col) + transform + physical layout
+  yj17120_tester.keymap         single &kp A binding
+  yj17120_tester.conf           (empty; defconfig carries all options)
+  yj17120_tester.zmk.yml        shield metadata (id yj17120_tester, requires yj17120)
+src/
+  CMakeList.txt                 target_sources(app PRIVATE power_led.c)
+  power_led.c                   SYS_INIT drives DT_ALIAS(led1) high at boot
+zephyr/module.yml               build.settings.board_root = .
 ```
 
 ## Flash layout
 
-The device ships with a **SoftDevice (S140)** and an **OpenDFU** USB bootloader. ZMK is linked into the application partition only; the MBR, SoftDevice and OpenDFU regions are left untouched.
+The device ships with a **SoftDevice (S140 v7.3.0)** and an **OpenDFU** USB
+bootloader. ZMK is linked into the application partition only; the MBR,
+SoftDevice and OpenDFU regions are left untouched.
 
 ```
 0x00000000 - 0x00000FFF   MBR
-0x00001000 - 0x00026FFF   SoftDevice S140
+0x00001000 - 0x00026FFF   SoftDevice S140 v7.3.0
 0x00027000 - 0x000D2FFF   ZMK application      (app ORIGIN = 0x27000)
 0x000D3000 - 0x000DFFFF   ZMK settings (NVS / FCB)
 0x000E0000 - 0x000FDFFF   OpenDFU USB bootloader (protected)
 0x000FE000 - 0x000FFFFF   UICR
 ```
 
-The app start address (`0x27000`) is driven by `CONFIG_USE_DT_CODE_PARTITION=y` plus the `zephyr,code-partition` chosen in `yj17120.dts`. If you change the SoftDevice and it moves the app start, update the `code_partition` `reg` offset/size in `yj17120.dts` and the `sd_partition` size, then rebuild.
+The app start address (`0x27000`) is driven by `CONFIG_USE_DT_CODE_PARTITION=y`
+plus the `zephyr,code-partition` chosen node in
+`yj17120_nrf52840_zmk.dts`. After any local build, sanity-check:
 
-> This layout assumes the **0x27000** app start. When the dongle was first mapped the app started at `0x23000`; after a newer SoftDevice it moved to `0x27000`.
+```bash
+grep "FLASH (rx)" zmk/build/holyiot_yj17120_tester/zephyr/linker.cmd
+# expect: FLASH (rx) : ORIGIN = (0x0 + 0x27000), LENGTH = (0xac000 - 0x0)
+```
 
 ## SoftDevice
 
-ZMK BLE on nRF52840 runs on top of the **Nordic S140 SoftDevice**, which lives in the `0x00001000` partition (the `sd_partition`). It is **already present** on the dongle. Routine ZMK application builds reuse the existing SoftDevice and do not include it:
+ZMK BLE on nRF52840 runs on top of the **Nordic S140 SoftDevice** (v7.3.0),
+which lives in the `sd_partition` (`0x00001000–0x00026FFF`). It is **already
+present on the board** and is not part of the ZMK `.hex`.
 
-```
-CONFIG_ZMK_BLE=y
-CONFIG_BT_CTLR default (nRF52840 SoftDevice)
-```
-
-This layout targets **S140 v7.3.0**, whose **application start address is `0x00027000`**. The installed SoftDevice must match the partition layout below.
-
-Key points:
-
-- **Do not erase the `0x00001000–0x00026FFF` region** on every flash. Only the application (`0x27000…`) is safe to rewrite via normal flashing. If you do a *full* chip erase (e.g. `nrfjprog --eraseall` over SWD), see [Full provisioning](#full-provisioning) before flashing ZMK or BLE will stop working.
-- The ZMK `.hex` only contains the application; it is linked to start at `0x27000` and is written over the existing application slot. The SoftDevice and OpenDFU boot regions are left intact.
-- If you upgrade the SoftDevice version, its size/end address may change. Confirm the new app start and adjust `yj17120.dts`:
-
-  ```dts
-  &flash0 {
-      partitions {
-          compatible = "fixed-partitions";
-          sd_partition: partition@0 {
-              reg = <0x00000000 0xNEW_APP_START>;   /* end of MBR+SoftDevice */
-          };
-          code_partition: partition@NEW_APP_START {
-              reg = <0xNEW_APP_START 0xSIZE>;
-          };
-          ...
-      };
-  };
-  ```
-
-  then rebuild and re-verify the `FLASH (rx)` ORIGIN in `linker.cmd` matches the new start.
+- Use `nrfjprog` / nRF Connect Programmer **Write** for routine app updates.
+- Do **not** use **Erase & Write** for routine application updates (the SoftDevice is in `0x00001000`–`0x00026FFF`).
+- If the SoftDevice is moved or replaced, update the `sd_partition` /
+  `code_partition` `reg` tuples in `yj17120_nrf52840_zmk.dts` and rebuild;
+  then re-check the `FLASH (rx)` ORIGIN in `linker.cmd`.
 
 ## Build
 
 From the `zmk-workspace` root (where `build-docker.sh` lives):
 
 ```bash
-./build-docker.sh -b yj17120 -d build/holyiot_yj17120 -c non-nemo-zmk-config -e zmk-holyiot-board
+./build-docker.sh -b yj17120//zmk -S yj17120_tester \
+    -d build/holyiot_yj17120_tester \
+    -c non-nemo-zmk-config \
+    -e zmk-holyiot-board
 ```
 
-Note: `-b yj17120` — the board's HWM v2 name has no vendor prefix.
-`-e zmk-holyiot-board` is required so the module (and its board + `led.c`) are loaded into the build.
+Notes:
+
+- `-b yj17120//zmk` — HWM v2 board name with the `zmk` variant.
+- `-S yj17120_tester` — pass a shield; the wrapper forwards it as `-DSHIELD=...`.
+- `-e zmk-holyiot-board` is required so the module (and thus its board +
+  shield) are loaded into the build as `ZMK_EXTRA_MODULES`.
 
 Artifact:
 
-```bash
-zmk/build/holyiot_yj17120/zephyr/zmk.hex
+```
+zmk/build/holyiot_yj17120_tester/zephyr/zmk.hex
 ```
 
-Sanity-check the link address after a build:
+### Alternate (in-container) invocation
+
+From inside the devcontainer:
 
 ```bash
-grep "FLASH (rx)" zmk/build/holyiot_yj17120/zephyr/linker.cmd
-# expect: FLASH (rx) : ORIGIN = (0x0 + 0x27000), LENGTH = (0xac000 - 0x0)
+west build -s app -d build/holyiot_yj17120_tester -b yj17120//zmk \
+  -- -DSHIELD=yj17120_tester \
+     -DZMK_CONFIG=/workspaces/zmk-config/non-nemo-zmk-config/config \
+     -DZMK_EXTRA_MODULES=/workspaces/zmk-modules/zmk-holyiot-board
 ```
 
 ## Flash with nRF Connect for Desktop (Programmer)
 
-The YJ-17120 presents a standard **nRF52840 USB** device, so it flashes over USB with the **Programmer** app from *nRF Connect for Desktop* — no J-Link / external debugger required.
+The YJ-17120 presents a standard **nRF52840 USB** device, so it flashes over
+USB with the **Programmer** app from *nRF Connect for Desktop* — no J-Link /
+external debugger required.
 
-### One-time setup
-
-1. Install **nRF Connect for Desktop** (ncs) from https://www.nordicsemi.com/SoftwareTools/nRF-Connect-for-desktop and add the **Programmer** module.
-2. Open Programmer and, on first run, add the board if it isn't offered:
-   - Device to flash: choose **nRF52840** (or the USB / `nrf52840` target).
-
-### Flash the firmware (application / SoftDevice-safe)
-
-The dongle's **OpenDFU bootloader** and **SoftDevice** are reserved/protected regions and must **not** be erased during a routine application flash. `zmk.hex` already targets only the application slot, so use **Write** without a full-chip erase.
-
-1. Connect the dongle to the computer over **USB**.
-2. In Programmer:
-   - Select the connected **nRF52840** device.
-   - **Click** `Add Files` and **Browse** to `zmk/build/holyiot_yj17120/zephyr/zmk.hex`.
-   - Press **Write**.
-3. After flashing, **reset** the dongle to run the new app (Programmer may offer "Reset", or simply unplug/replug the USB cable).
+1. Connect the board over **USB**.
+2. Add `/workspaces/zmk/build/holyiot_yj17120_tester/zephyr/zmk.hex` and press **Write**.
+3. **Reset** the board to run the new app (unplug/replug also works).
 
 ### Full provisioning
 
-Use this procedure only for a new or fully erased chip. A full erase removes the existing MBR, SoftDevice, and OpenDFU bootloader. Obtain the matching S140 and OpenDFU images from the device vendor or [Nordic Semiconductor](https://www.nordicsemi.com/Products/Development-software/S140/Download), restore them in the required order, and then flash `zmk.hex` with the application-only procedure above. Do not use this procedure for normal firmware updates.
-
-If you change the SoftDevice version, its size/end address may change. Update the `sd_partition` and `code_partition` values in `yj17120.dts`, rebuild, and confirm the `FLASH (rx)` ORIGIN in `linker.cmd` matches the new application start.
-
-### SoftDevice / layout caveat
-
-- Normal app flashing over USB **preserves the SoftDevice** (`0x00001000`) and OpenDFU (`0x000E0000`); only the `0x27000` application region is written. This is the important part of the memory layout — the app start is **not** address `0`.
-- If you **do** change the SoftDevice, or must use an SWD programmer (J-Link / ST-Link) and run a **full erase**, follow [Full provisioning](#full-provisioning) before the ZMK application. Over USB/DFU this is unnecessary.
-- Verify the link address so the app really lands at `0x27000`:
-
-  ```bash
-  grep "FLASH (rx)" zmk/build/holyiot_yj17120/zephyr/linker.cmd
-  # expect: FLASH (rx) : ORIGIN = (0x0 + 0x27000), LENGTH = (0xac000 - 0x0)
-  ```
-
-### If flashing fails
-
-- Make sure nothing else (ZMK Studio, udev rules, `nrfutil`, another Programmer instance) is holding the USB device.
-- Prefer the `.hex` file; it already carries the correct absolute base address (`0x00027000`), so no offset needs to be specified.
-- If the **Erase & Write** button is greyed out, you are in **DFU mode** — use the **Write** button.
-- To enter/exit OpenDFU, **double-tap reset** on the dongle.
+Use only for a new or fully erased chip. Obtain the S140 and OpenDFU images,
+restore them in order, then flash `zmk.hex` with the application-only
+procedure above.
 
 ## Verify on macOS
 
-The dongle should enumerate as a USB HID **keyboard**:
-
-- VID `0x1D50` (7504), PID `0x615E` (24926), Vendor `ZMK Project`.
-- Product string: **`YJ17120`** (set by `CONFIG_ZMK_KEYBOARD_NAME`).
-
-Quick check:
-
 ```bash
-ioreg -l -w0 -r -c IOHIDInterface | grep -A1 -i "serial\|product"
+ioreg -l -w0 -r -c IOHIDInterface | grep -A1 -i "product\|serial"
 ```
 
-Look for an interface with `PrimaryUsagePage = 1` (Generic Desktop) and `PrimaryUsage = 6` (Keyboard) bound to your dongle's serial.
+Expect a HID interface with Vendor `ZMK Project`, product string
+**`YJ17120 Tester`** (set by `CONFIG_ZMK_KEYBOARD_NAME` in the tester-shield
+`Kconfig.defconfig`).
 
 ### Notes on behavior
 
-- **Keyless central**: it only emits keystrokes after a BLE peripheral is paired and connected. With no peripheral attached it still enumerates as a USB keyboard (that's expected) but sends nothing.
-- **LED1** (P1.01) is driven high at boot as a "powered / running" indicator.
-- **Console/UART** is intentionally disabled to save flash; enable `zephyr,console` in `yj17120.dts` + `CONFIG_UART_CONSOLE=y` if you want debug output.
+- **Board-only build (no shield)** is not currently supported: the base
+  `zmk`-variant defconfig intentionally carries no split-role flags and the
+  board devicetree does not bind a `zmk,kscan` node. Use the tester shield
+  (or a real keyboard shield) to produce a linkable firmware image.
+- **LED1** (P1.01) is driven high at boot as a "powered / running" indicator
+  by `src/power_led.c`.
+- **Console/UART** is disabled in the `zmk` variant devicetree to keep flash
+  usage minimal. If debug output is required from the tester shield, enable
+  `zephyr,console` in the tester `.overlay` and add `CONFIG_UART_CONSOLE=y`
+  to the tester `.conf`.
 
-## Pairing a peripheral
+## Open
 
-The dongle is the split **central** and has no keys of its own. It can enumerate as a USB keyboard before pairing, but it cannot send keystrokes until at least one split peripheral is connected.
-
-Build the paired keyboard half with `ZMK_SPLIT_ROLE_CENTRAL=n`. For the `non-nemo-zmk-config` repository, the available peripheral targets are `non_nemo_left` and `non_nemo_right` on `xiao_ble`; both are listed in its `build.yaml`.
-
-Flash the peripheral, reset both devices, and use the keyboard's normal ZMK split pairing/reset procedure if it was previously paired to another central. Once connected, key presses from the peripheral should appear through the YJ-17120 USB HID interface.
-
-## ZMK split config (central)
-
-From `yj17120_defconfig`:
-
-```
-CONFIG_ZMK_BLE=y
-CONFIG_ZMK_SPLIT=y
-CONFIG_ZMK_SPLIT_ROLE_CENTRAL=y
-CONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS=3
-CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING=y
-```
-
-The paired peripheral half must be built with `ZMK_SPLIT_ROLE_CENTRAL=n` (peripheral) to pair to this dongle.
+- Actual interconnect pinout / connector is still pending. The tester shield
+  uses `gpio0.4` (row) and `gpio0.5` (col) as the placeholder; replace these
+  in `boards/shields/yj17120_tester/yj17120_tester.overlay` once the real
+  YJ-17120 shield connector is defined.
