@@ -1,0 +1,43 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Tester shield for the HolyIOT YJ-17120 interconnect board.
+ *
+ * Placeholder matrix: 1 row x 1 column on a valid nRF52840 GPIO.
+ * The pinout here is a stand-in for the actual YJ-17120 interconnect
+ * pinout and will be updated once the real shield connector is defined.
+ */
+
+#include <dt-bindings/zmk/matrix_transform.h>
+
+/ {
+    chosen {
+        zmk,kscan = &kscan0;
+        zmk,physical-layout = &physical_layout0;
+    };
+
+    kscan0: kscan {
+        compatible = "zmk,kscan-gpio-matrix";
+        diode-direction = "col2row";
+        wakeup-source;
+
+        row-gpios = <&gpio0 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+        col-gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+    };
+
+    default_transform: keymap_transform {
+        compatible = "zmk,matrix-transform";
+        columns = <1>;
+        rows = <1>;
+        map = <
+            RC(0,0)
+        >;
+    };
+
+    physical_layout0: physical_layout_0 {
+        compatible = "zmk,physical-layout";
+        display-name = "Tester (1x1)";
+        kscan = <&kscan0>;
+        transform = <&default_transform>;
+    };
+};
